@@ -1,13 +1,17 @@
 #include <iostream>
 #include <vector>
+#include <sstream>
 
 #include <SFML/Graphics.hpp>
-#include <SFML/Audio.hpp>
+#include <SFML/Graphics/Text.hpp>
+#include <SFML/Graphics/Font.hpp>
+//#include <SFML/Audio.hpp>
 
 using namespace std;
 
 const float CASA = 50;
 const int LARGURA = 800;
+const int EXTRA = 200;
 const int ALTURA = 600;
 const int N_LINHAS = ALTURA / CASA;
 const int N_COLUNAS = LARGURA / CASA;
@@ -44,6 +48,37 @@ sf::Keyboard::Key inverter(sf::Keyboard::Key tecla){
     return sf::Keyboard::Left;
 }
 
+void desenhar_cubos(sf::RectangleShape &retangulo, sf::RenderWindow &janela, Par &marca, Cobra &cobra){
+    retangulo.setFillColor(sf::Color::Cyan);
+    //Cria varios quadrados formando uma tabela
+    for(int x = 0; x < N_LINHAS; x++){
+        for(int y = 0; y < N_COLUNAS; y++){
+            retangulo.setPosition(y * CASA + 2, x * CASA + 2);
+            janela.draw(retangulo);
+        }
+    }
+
+    retangulo.setFillColor(marca.cor);
+    retangulo.setPosition(marca.x * CASA + 2, marca.y * CASA + 2);
+    janela.draw(retangulo);
+
+    for(auto gomo : cobra.gomos){
+        retangulo.setFillColor(gomo.cor);
+        retangulo.setPosition(gomo.x * CASA + 2, gomo.y * CASA + 2);
+        janela.draw(retangulo);
+    }
+}
+
+void aumentar_corpo(Cobra &cobra, Par &marca, sf::Clock &relogio_marca, int &pontuacao){
+    //Cobra aumenta ao pegar a marca
+    if(cobra.gomos[0].x == marca.x && cobra.gomos[0].y == marca.y){
+        cobra.gomos.push_back(marca);
+        marca = Par(rand() % N_COLUNAS, rand() % N_LINHAS);
+        relogio_marca.restart();
+        pontuacao++;
+    }
+}
+
 bool colisao_com_corpo(Cobra cobra){
     Par cabeca = cobra.gomos[0];
     int tam = cobra.gomos.size();
@@ -57,12 +92,12 @@ void limitar_cobra(Cobra &cobra){
     //Erquuerda e direita
     if (cobra.gomos[0].x < 0)
         cobra.gomos[0].x = N_COLUNAS - 1;
-    if (cobra.gomos[0].x > N_COLUNAS)
+    if (cobra.gomos[0].x >= N_COLUNAS)
         cobra.gomos[0].x = 0;
     //Cima e Embaixo
     if (cobra.gomos[0].y < 0)
         cobra.gomos[0].y = N_LINHAS - 1;
-    if (cobra.gomos[0].y > N_LINHAS)
+    if (cobra.gomos[0].y >= N_LINHAS)
         cobra.gomos[0].y = 0;
 }
 
@@ -93,12 +128,33 @@ void update_cobra(Cobra &cobra){
 
 }
 
+void gerar_marca(Par &marca, sf::Clock &relogio_marca){
+    //A cada 5 segundos a marca mudar de local
+    if(relogio_marca.getElapsedTime() > sf::milliseconds(5000)){
+        relogio_marca.restart();
+        marca = Par(rand() % N_COLUNAS, rand() % N_LINHAS);
+    }
+}
+
 int main(){
     srand(time(NULL));
     sf::Clock relogio;
     sf::Clock relogio_marca;
+    int pontuacao = 0;
 
-    sf::RenderWindow janela(sf::VideoMode(LARGURA + 200, ALTURA), "Janela");
+    sf::RenderWindow janela(sf::VideoMode(LARGURA + EXTRA, ALTURA), "Snake Game");
+
+    sf::Font font;
+    if (!font.loadFromFile("/usr/share/fonts/truetype/droid/DroidSansMono.ttf")){cout << "ERROR ao carregar font!\n";}
+
+    sf::Text texto = sf::Text("Snake Game", font), pontos = sf::Text("Pontos: ", font), score = sf::Text("0", font);
+    texto.setFillColor(sf::Color::Black);
+    pontos.setFillColor(sf::Color::Black);
+    score.setFillColor(sf::Color::Black);
+    texto.setStyle(sf::Text::Bold);
+    texto.setPosition(LARGURA, CASA);
+    pontos.setPosition(LARGURA, CASA * 2);
+    score.setPosition(LARGURA + 125, CASA * 2);
 
     Par marca = Par(rand() % N_COLUNAS, rand() % N_LINHAS);
 
@@ -109,6 +165,7 @@ int main(){
     cobra.gomos.push_back(Par(2, 2));
 
     while(janela.isOpen()){
+
         sf::Event evento;
 
         //Gerencia eventos
@@ -121,18 +178,9 @@ int main(){
             }
         }
 
-        //Cobra aumenta ao pegar a marca
-        if(cobra.gomos[0].x == marca.x && cobra.gomos[0].y == marca.y){
-            cobra.gomos.push_back(marca);
-            marca = Par(rand() % N_COLUNAS, rand() % N_LINHAS);
-            relogio_marca.restart();
-        }
+        aumentar_corpo(cobra, marca, relogio_marca, pontuacao);
 
-        //A cada 5 segundos a marca mudar de local
-        if(relogio_marca.getElapsedTime() > sf::milliseconds(5000)){
-            relogio_marca.restart();
-            marca = Par(rand() % N_COLUNAS, rand() % N_LINHAS);
-        }
+        gerar_marca(marca, relogio_marca);
 
         //A cada 0,25 segundos a cobra é atualizada em relacao a sua posicao
         if(relogio.getElapsedTime() > sf::milliseconds(250)){
@@ -143,32 +191,22 @@ int main(){
                 Par head = cobra.gomos[0];
                 cobra.gomos.clear();
                 cobra.gomos.push_back(head);
+                pontuacao = 0;
             }
         }
 
-        janela.clear();
+        janela.clear(sf::Color::White);
 
         //Abaixo esta apenas acoes relativas ao desing dos gomos em relacao a tabela
+        desenhar_cubos(retangulo, janela, marca, cobra);
 
-        retangulo.setFillColor(sf::Color::Cyan);
-        //Cria varios quadrados formando uma tabela
-        for(int x = 0; x < N_LINHAS; x++){
-            for(int y = 0; y < N_COLUNAS; y++){
-                retangulo.setPosition(y * CASA + 2, x * CASA + 2);
-                janela.draw(retangulo);
-            }
-        }
+        stringstream score_str;
+        score_str << pontuacao;
+        score.setString(score_str.str());
 
-        retangulo.setFillColor(marca.cor);
-        retangulo.setPosition(marca.x * CASA + 2, marca.y * CASA + 2);
-        janela.draw(retangulo);
-
-        for(auto gomo : cobra.gomos){
-            retangulo.setFillColor(gomo.cor);
-            retangulo.setPosition(gomo.x * CASA + 2, gomo.y * CASA + 2);
-            janela.draw(retangulo);
-        }
-
+        janela.draw(texto);
+        janela.draw(pontos);
+        janela.draw(score);
         janela.display();
     }
 
