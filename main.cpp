@@ -136,10 +136,29 @@ void gerar_marca(Par &marca, sf::Clock &relogio_marca){
     }
 }
 
+string formatar_tempo(sf::Clock cronometro){
+    stringstream cronometro_str;
+    int tempo = cronometro.getElapsedTime().asSeconds();
+    int seconds = tempo % 60;
+    tempo /= 60;
+    int minutos = tempo % 60;
+    tempo /= 60;
+    int horas = tempo % 60;
+
+    if (horas > 0) {cronometro_str << horas << "h" << ":";}
+
+    if (minutos > 0) cronometro_str << minutos << "m" << ":";
+
+    cronometro_str << seconds << "s";
+
+    return cronometro_str.str();
+}
+
 int main(){
     srand(time(NULL));
     sf::Clock relogio;
     sf::Clock relogio_marca;
+    sf::Clock cronometro;
     int pontuacao = 0;
 
     sf::RenderWindow janela(sf::VideoMode(LARGURA + EXTRA, ALTURA), "Snake Game");
@@ -147,14 +166,16 @@ int main(){
     sf::Font font;
     if (!font.loadFromFile("/usr/share/fonts/truetype/droid/DroidSansMono.ttf")){cout << "ERROR ao carregar font!\n";}
 
-    sf::Text texto = sf::Text("Snake Game", font), pontos = sf::Text("Pontos: ", font), score = sf::Text("0", font);
+    sf::Text texto = sf::Text("Snake Game", font), pontos = sf::Text("Pontos: ", font), score = sf::Text("0", font),  time = sf::Text("Tempo: 0s", font);
     texto.setFillColor(sf::Color::Black);
     pontos.setFillColor(sf::Color::Black);
     score.setFillColor(sf::Color::Black);
+    time.setFillColor(sf::Color::Black);
     texto.setStyle(sf::Text::Bold);
     texto.setPosition(LARGURA, CASA);
     pontos.setPosition(LARGURA, CASA * 2);
     score.setPosition(LARGURA + 125, CASA * 2);
+    time.setPosition(LARGURA, CASA * 3);
 
     Par marca = Par(rand() % N_COLUNAS, rand() % N_LINHAS);
 
@@ -204,9 +225,12 @@ int main(){
         score_str << pontuacao;
         score.setString(score_str.str());
 
+        time.setString(formatar_tempo(cronometro));
+
         janela.draw(texto);
         janela.draw(pontos);
         janela.draw(score);
+        janela.draw(time);
         janela.display();
     }
 
