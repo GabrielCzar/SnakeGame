@@ -2,6 +2,7 @@
 #include <vector>
 #include <sstream>
 #include <fstream>
+#include <algorithm>
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/Text.hpp>
@@ -16,6 +17,7 @@ const int EXTRA = 200;
 const int ALTURA = 600;
 const int N_LINHAS = ALTURA / CASA;
 const int N_COLUNAS = LARGURA / CASA;
+const string ARMAZENAMENTO_LOCAL = "/home/gabriel/github/snake_game/";
 
 struct Par{
     int x;
@@ -163,11 +165,32 @@ vector<int> ler_scores(fstream &file){
     vector<int> scores;
     scores.reserve(10);
     while (file >> score){
-        scores.push_back(score);
         if (i >= 10)
             break;
+        scores.push_back(score);
+        i++;
     }
     return scores;
+}
+
+string salva_scores(vector<int> scores){
+    stringstream r;
+    for (auto value: scores)
+        r << value << endl;
+
+    return r.str();
+}
+
+string update_scores(vector<int> &scores){
+    if (scores.size() <= 0)
+        return "";
+    sort(scores.begin(), scores.end());
+    reverse(scores.begin(), scores.end());
+    int tam = scores.size();
+    stringstream result;
+    for (int i = 0; i < tam; ++i)
+        result << (i + 1) << "-" << scores[i] << endl;
+    return result.str();
 }
 
 int main(){
@@ -180,32 +203,40 @@ int main(){
 
     sf::RenderWindow janela(sf::VideoMode(LARGURA + EXTRA, ALTURA), "Snake Game");
 
-//    ofstream file;
-  //  file.open("/home/gabriel/github/snake_game/scores.txt", ios::out | ios::in);
-    //vector<int> scores = ler_scores(file);
+    fstream file(ARMAZENAMENTO_LOCAL + "scores.txt");
+    vector<int> scores = ler_scores(file);
+    file.close();
 
     sf::Music musica;
-    if (!musica.openFromFile("/home/gabriel/github/snake_game/soundtrack.ogg")){cout << "ERROR ao carregar musica!\n";}
+    if (!musica.openFromFile(ARMAZENAMENTO_LOCAL + "soundtrack.ogg")){cout << "ERROR ao carregar musica!\n";}
     musica.play();
 
     sf::SoundBuffer buffer;
-    if (!buffer.loadFromFile("/home/gabriel/github/snake_game/score.wav")){cout << "ERROR ao carregar sound!\n";}
+    if (!buffer.loadFromFile(ARMAZENAMENTO_LOCAL + "score.wav")){cout << "ERROR ao carregar sound!\n";}
     sf::Sound sound;
     sound.setBuffer(buffer);
 
     sf::Font font;
-    if (!font.loadFromFile("/home/gabriel/github/snake_game/DroidSansMono.ttf")){cout << "ERROR ao carregar font!\n";}
+    if (!font.loadFromFile(ARMAZENAMENTO_LOCAL + "DroidSansMono.ttf")){cout << "ERROR ao carregar font!\n";}
 
-    sf::Text texto = sf::Text("Snake Game", font), pontos = sf::Text("Pontos: ", font), score = sf::Text("0", font),  time = sf::Text("Tempo: 0s", font);
+    sf::Text texto = sf::Text("Snake Game", font),
+            pontos = sf::Text("Pontos: ", font),
+            score = sf::Text("0", font),
+            time = sf::Text("Tempo: 0s", font),
+            tabela_pontuacao = sf::Text("OK", font);
     texto.setFillColor(sf::Color::Black);
     pontos.setFillColor(sf::Color::Black);
     score.setFillColor(sf::Color::Black);
     time.setFillColor(sf::Color::Black);
+    tabela_pontuacao.setFillColor(sf::Color::Black);
     texto.setStyle(sf::Text::Bold);
     texto.setPosition(LARGURA, CASA);
     pontos.setPosition(LARGURA, CASA * 2);
     score.setPosition(LARGURA + 125, CASA * 2);
     time.setPosition(LARGURA, CASA * 3);
+    tabela_pontuacao.setPosition(LARGURA, CASA * 4);
+
+    tabela_pontuacao.setString(update_scores(scores));
 
     Par marca = Par(rand() % N_COLUNAS, rand() % N_LINHAS);
 
@@ -243,8 +274,8 @@ int main(){
                 Par head = cobra.gomos[0];
                 cobra.gomos.clear();
                 cobra.gomos.push_back(head);
-                //file << pontuacao;
-
+                scores.push_back(pontuacao);
+                tabela_pontuacao.setString(update_scores(scores));
                 pontuacao = 0;
             }
         }
@@ -264,10 +295,14 @@ int main(){
         janela.draw(pontos);
         janela.draw(score);
         janela.draw(time);
+        janela.draw(tabela_pontuacao);
         janela.display();
     }
 
     musica.stop();
+
+    file.open(ARMAZENAMENTO_LOCAL + "scores.txt", ios::in | ios::out | ios::trunc);
+    file << salva_scores(scores);
     file.close();
 
     return 0;
