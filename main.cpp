@@ -1,11 +1,12 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
+#include <fstream>
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/Text.hpp>
 #include <SFML/Graphics/Font.hpp>
-//#include <SFML/Audio.hpp>
+#include <SFML/Audio.hpp>
 
 using namespace std;
 
@@ -69,14 +70,16 @@ void desenhar_cubos(sf::RectangleShape &retangulo, sf::RenderWindow &janela, Par
     }
 }
 
-void aumentar_corpo(Cobra &cobra, Par &marca, sf::Clock &relogio_marca, int &pontuacao){
+bool aumentar_corpo(Cobra &cobra, Par &marca, sf::Clock &relogio_marca, int &pontuacao){
     //Cobra aumenta ao pegar a marca
     if(cobra.gomos[0].x == marca.x && cobra.gomos[0].y == marca.y){
         cobra.gomos.push_back(marca);
         marca = Par(rand() % N_COLUNAS, rand() % N_LINHAS);
         relogio_marca.restart();
         pontuacao++;
+        return true;
     }
+    return false;
 }
 
 bool colisao_com_corpo(Cobra cobra){
@@ -154,17 +157,44 @@ string formatar_tempo(sf::Clock cronometro){
     return cronometro_str.str();
 }
 
+vector<int> ler_scores(fstream &file){
+    int i = 0;
+    int score;
+    vector<int> scores;
+    scores.reserve(10);
+    while (file >> score){
+        scores.push_back(score);
+        if (i >= 10)
+            break;
+    }
+    return scores;
+}
+
 int main(){
     srand(time(NULL));
     sf::Clock relogio;
     sf::Clock relogio_marca;
     sf::Clock cronometro;
+
     int pontuacao = 0;
 
     sf::RenderWindow janela(sf::VideoMode(LARGURA + EXTRA, ALTURA), "Snake Game");
 
+//    ofstream file;
+  //  file.open("/home/gabriel/github/snake_game/scores.txt", ios::out | ios::in);
+    //vector<int> scores = ler_scores(file);
+
+    sf::Music musica;
+    if (!musica.openFromFile("/home/gabriel/github/snake_game/soundtrack.ogg")){cout << "ERROR ao carregar musica!\n";}
+    musica.play();
+
+    sf::SoundBuffer buffer;
+    if (!buffer.loadFromFile("/home/gabriel/github/snake_game/score.wav")){cout << "ERROR ao carregar sound!\n";}
+    sf::Sound sound;
+    sound.setBuffer(buffer);
+
     sf::Font font;
-    if (!font.loadFromFile("/usr/share/fonts/truetype/droid/DroidSansMono.ttf")){cout << "ERROR ao carregar font!\n";}
+    if (!font.loadFromFile("/home/gabriel/github/snake_game/DroidSansMono.ttf")){cout << "ERROR ao carregar font!\n";}
 
     sf::Text texto = sf::Text("Snake Game", font), pontos = sf::Text("Pontos: ", font), score = sf::Text("0", font),  time = sf::Text("Tempo: 0s", font);
     texto.setFillColor(sf::Color::Black);
@@ -199,7 +229,8 @@ int main(){
             }
         }
 
-        aumentar_corpo(cobra, marca, relogio_marca, pontuacao);
+        if (aumentar_corpo(cobra, marca, relogio_marca, pontuacao))
+            sound.play();
 
         gerar_marca(marca, relogio_marca);
 
@@ -212,6 +243,8 @@ int main(){
                 Par head = cobra.gomos[0];
                 cobra.gomos.clear();
                 cobra.gomos.push_back(head);
+                //file << pontuacao;
+
                 pontuacao = 0;
             }
         }
@@ -233,6 +266,9 @@ int main(){
         janela.draw(time);
         janela.display();
     }
+
+    musica.stop();
+    file.close();
 
     return 0;
 }
